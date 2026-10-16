@@ -5,7 +5,8 @@ from document_loader import (
     load_text_file,
     load_pdf_file,
     load_docx_file,
-    load_excel_file
+    load_excel_file,
+    load_csv_file
 )
 
 
@@ -69,22 +70,66 @@ First Matches:
 
 {preview_matches}
 """
-def compare_excel_files(file1, file2):
 
-    df1 = pd.read_excel(file1.name)
-    df2 = pd.read_excel(file2.name)
-    if list(df1.columns) != list(df2.columns):
-        return "Files have different column structures."
+def load_comparison_file(file):
+    
+    print(file.name)
 
-    differences = df1.compare(df2)
+    with open(file.name, "rb") as f:
+        print(f.read(100))
 
-    if differences.empty:
-        return "No differences found."
+    if file.name.endswith(".csv"):
 
-    return differences.to_string()
+        encodings = [
+            "utf-8",
+            "cp1252",
+            "latin1"
+        ]
 
+        for enc in encodings:
 
+            try:
+                
+                with open(file.name, "r", errors="ignore") as f:
 
+                    print("FIRST 5 LINES OF CSV:")
+
+                    for _ in range(5):
+                        line = f.readline()
+
+                        if not line:
+                            break
+
+                        print(repr(line))
+
+                return pd.read_csv(
+                    file.name,
+                    encoding=enc,
+                    sep=None,
+                    engine="python"
+                )
+
+            except Exception:
+                pass
+
+        raise ValueError(
+            "Unable to read CSV file."
+        )
+
+    elif file.name.endswith(".xlsx"):
+
+        return pd.read_excel(
+            file.name,
+            engine="openpyxl"
+        )
+
+    else:
+
+        raise ValueError(
+            "Only CSV and XLSX files are supported."
+        )
+
+        
 search_tab = gr.Interface(
     fn=analyze_document,
     inputs=[
@@ -96,13 +141,13 @@ search_tab = gr.Interface(
         lines=20
     ),
     title="Document Intelligence Assistant",
-    description="Upload TXT, PDF or DOCX files and search for content."
+    description="Upload TXT, PDF, DOCX, XLSX or CSV files and search for content"
 )
 
 def compare_excel_files(file1, file2):
 
-    df1 = pd.read_excel(file1.name)
-    df2 = pd.read_excel(file2.name)
+    df1 = load_comparison_file(file1)
+    df2 = load_comparison_file(file2)
     if list(df1.columns) != list(df2.columns):
         return "Files have different column structures."
 
@@ -151,7 +196,7 @@ compare_tab = gr.Interface(
         lines=20
     ),
     title="Compare Files",
-    description="Upload two Excel files and compare them."
+    description="Upload CSV or XLSX files and compare them."
 )
 
 demo = gr.TabbedInterface(
